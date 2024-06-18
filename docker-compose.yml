@@ -1,0 +1,66 @@
+services:
+  rabbit:
+    image: rabbitmq:3.12-management
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    extends:
+      file: common-docker-config.yml
+      service: network-deploy-service
+
+  configserver:
+    image: "bmanojprabhakar/ms-finance-configserver:0.0.1-SNAPSHOT"
+    container_name: configserver-ms
+    ports:
+      - "6001:6001"
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    healthcheck:
+      test: "curl --fail --silent localhost:6001/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    extends:
+      file: common-docker-config.yml
+      service: microservice-base-config
+
+  accounts:
+    image: "bmanojprabhakar/ms-finance-accounts:0.0.2-SNAPSHOT"
+    container_name: accounts-ms
+    ports:
+      - "7080:7080"
+    extends:
+      file: common-docker-config.yml
+      service: microservice-configserver-config
+
+  cards:
+    image: "bmanojprabhakar/ms-finance-cards:0.0.2-SNAPSHOT"
+    container_name: cards-ms
+    ports:
+      - "7081:7081"
+    extends:
+      file: common-docker-config.yml
+      service: microservice-configserver-config
+
+  loan:
+    image: "bmanojprabhakar/ms-finance-loan:0.0.2-SNAPSHOT"
+    container_name: loan-ms
+    ports:
+      - "7082:7082"
+    extends:
+      file: common-docker-config.yml
+      service: microservice-configserver-config
+
+networks:
+  unknownBank:
+    driver: "bridge"
+
